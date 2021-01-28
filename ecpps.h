@@ -111,8 +111,8 @@ class System {
 class RenderSystem : public System {
     private:
     public:
-        virtual void render() {};
-        virtual void render(ECSManager* manager) { render(); };
+        virtual void render(SDL_Renderer* renderer) {};
+        virtual void render(SDL_Renderer* renderer, ECSManager* manager) { render( renderer); };
 };
 
 // holds much of the top level ECS data and functionality
@@ -144,6 +144,8 @@ class ECSManager {
         template <typename T> inline set<ID>& getComponentEntities();
         // gets a set of all entity/components ready to init
         template <typename T> inline set<ID>& getNewComponentEntities();
+        // used to move init components back into regular pool
+        template <typename T> inline void groupEntities();
         // gets a component of type and entity
         template <typename T> inline T& getComponent(ID entityID);
         // registers a new system
@@ -153,7 +155,7 @@ class ECSManager {
         // updates all systems
         inline void update();
         // renders all rendersystems
-        inline void render();
+        inline void render(SDL_Renderer* renderer);
 };
 
 // most often used ECSManager type, usually near the root of the program
@@ -376,6 +378,13 @@ set<ID>& ECSManager::getNewComponentEntities(){
 }
 
 template <typename T>
+void ECSManager::groupEntities(){
+    return components.groupEntities<T>();
+}
+
+
+
+template <typename T>
 inline T& ECSManager::getComponent(ID entityID) {
     return components.getComponent<T>(entityID);
 }
@@ -445,10 +454,10 @@ void ECSManager::update(){
     }
 }
 
-void ECSManager::render(){
+void ECSManager::render(SDL_Renderer* renderer){
     // render all render systems
     for(unique_ptr<RenderSystem>& rsystem : rsystems){
-        rsystem->render(this);
+        rsystem->render(renderer, this);
     }
 }
 
