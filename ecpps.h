@@ -49,7 +49,6 @@ struct Component {
 
 // base struct for components designed for rendering
 struct RenderComponent : public Component {
-        SDL_Texture* renderTexture;
 };
 
 // class for maintaining component vector and entity indexes
