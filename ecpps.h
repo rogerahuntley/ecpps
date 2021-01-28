@@ -72,9 +72,9 @@ class ComponentVector : public IComponentVector {
         vector<T>& getComponentVector() { return components; };
     public:
         inline void addComponent(ID entityID, T component);
-        inline set<ID> getComponentEntities();
+        inline set<ID>& getComponentEntities();
         inline void removeEntity(ID entityID) override;
-        inline T& getComponentAt(ID entityID);
+        inline T& getComponent(ID entityID);
 };
 
 // manages component vectors and tosses around pointers like it's nothing
@@ -83,7 +83,8 @@ class ComponentManager {
         map<const char*, std::shared_ptr<IComponentVector>> componentVectors;
     public:
         template <typename T> void addComponent(ID entityID, T component);
-        template <typename T> inline set<ID> getComponentEntities();
+        template <typename T> inline set<ID>& getComponentEntities();
+        template <typename T> inline T& getComponent(ID entityID);
         template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
         inline void removeEntity(ID entityID);
 };
@@ -134,7 +135,9 @@ class ECSManager {
         // adds a component of any type to a database of that type
         template <typename T> inline void addComponent(ID entityID, T component);
         // gets a set of all relevant entities per component
-        template <typename T> inline set<ID> getComponentEntities();
+        template <typename T> inline set<ID>& getComponentEntities();
+        // gets a component of type and entity
+        template <typename T> inline T& getComponent(ID entityID);
         // registers a new system
         template <typename T> inline void registerSystem();
         // updates all systems
@@ -226,7 +229,7 @@ void ComponentVector<T>::removeEntity(ID entityID) {
 }
 
 template <typename T>
-inline T& ComponentVector<T>::getComponentAt(ID entityID) {
+inline T& ComponentVector<T>::getComponent(ID entityID) {
     // get index of entity
     unsigned index = indexes[entityID];
     // return component at index
@@ -234,20 +237,8 @@ inline T& ComponentVector<T>::getComponentAt(ID entityID) {
 }
 
 template <typename T>
-set<ID> ComponentVector<T>::getComponentEntities(){
+set<ID>& ComponentVector<T>::getComponentEntities(){
     return entities;
-}
-
-template <typename T>
-void ComponentManager::addComponent(ID entityID, T component){
-    // this is where the pointer-magic happens
-    // get pointer for type, then send new component data
-    getComponentVector<T>()->addComponent(entityID, component);
-}
-
-template <typename T>
-set<ID> ComponentManager::getComponentEntities(){
-    return getComponentVector<T>()->getComponentEntities();
 }
 
 template <typename T>
@@ -265,6 +256,23 @@ std::shared_ptr<ComponentVector<T>> ComponentManager::getComponentVector(){
     return std::static_pointer_cast<ComponentVector<T>>(componentVectors.at(typekey));
 }
 
+template <typename T>
+void ComponentManager::addComponent(ID entityID, T component){
+    // this is where the pointer-magic happens
+    // get pointer for type, then send new component data
+    getComponentVector<T>()->addComponent(entityID, component);
+}
+
+template <typename T>
+set<ID>& ComponentManager::getComponentEntities(){
+    return getComponentVector<T>()->getComponentEntities();
+}
+
+template <typename T>
+inline T& ComponentManager::getComponent(ID entityID) {
+    return getComponentVector<T>()->getComponent(entityID);
+}
+
 void ComponentManager::removeEntity(ID entityID){
     for(const auto& [key, value] : componentVectors){
         auto& component = value;
@@ -275,6 +283,7 @@ void ComponentManager::removeEntity(ID entityID){
 
 // ------- ECSManager ------- //
 
+// constructor for entity, technically
 Entity& ECSManager::createEntity(){
     // get unique ID
     ID newID = generateEntityID();
@@ -314,12 +323,17 @@ void ECSManager::addComponent(ID entityID, T component){
 }
 
 template <typename T>
-set<ID> ECSManager::getComponentEntities(){
+set<ID>& ECSManager::getComponentEntities(){
     // check and see if object is derived from Component
     if(is_base_of<Component,T>::value == 1){
         // pass to component manager
         return components.getComponentEntities<T>();
     }
+}
+
+template <typename T>
+inline T& ECSManager::getComponent(ID entityID) {
+    return components.getComponent<T>(entityID);
 }
 
 template <typename T>
