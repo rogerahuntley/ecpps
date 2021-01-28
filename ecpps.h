@@ -303,18 +303,18 @@ std::shared_ptr<ComponentVector<T>> ECSManager::getComponentVector(){
 template <typename T>
 void ECSManager::registerSystem(){
     // check if system
-    if (is_base_of<System,T>::value == 1){
+    if constexpr (is_base_of<System,T>::value == 1){
         // check if render system
-        if (is_base_of<RenderSystem,T>::value == 1){
+        if constexpr (is_base_of<RenderSystem,T>::value == 1){
             // create render system
-            RenderSystem rsystem;
+            T rsystem;
             // add to vector
             rsystems.emplace_back(rsystem);
             // init
 
         }
         // create system
-        System system;
+        T system;
         // add to vector
         systems.emplace_back(system);
         // init
