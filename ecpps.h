@@ -76,9 +76,9 @@ class ComponentVector : public IComponentVector {
 class ComponentManager {
     private:
         map<const char*, std::shared_ptr<IComponentVector>> componentVectors;
-        template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
     public:
         template <typename T> void addComponent(ID entityID, T component);
+        template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
         inline void removeEntity(ID entityID);
 };
 
@@ -123,6 +123,8 @@ class ECSManager {
         inline void destroyEntity(ID entityID);
         // adds a component of any type to a database of that type
         template <typename T> inline void addComponent(ID entityID, T component);
+        // returns Component Vector pointer for systems
+        template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
         // registers a new system
         template <typename T> inline void registerSystem();
         // updates all systems
@@ -290,6 +292,12 @@ void ECSManager::addComponent(ID entityID, T component){
         // pass to component manager
         components.addComponent<T>(entityID, component);
     }
+}
+
+template <typename T>
+std::shared_ptr<ComponentVector<T>> ECSManager::getComponentVector(){ 
+    // pass return from components
+    return components.getComponentVector<T>();
 }
 
 template <typename T>
