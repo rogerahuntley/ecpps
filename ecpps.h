@@ -62,7 +62,7 @@ class IComponentVector {
 template <typename T>
 class ComponentVector : public IComponentVector {
     private:
-        // holds indexes of vector for entityID
+        // holds indexes of entityID
         map<ID, unsigned> indexes;
         // holds vector of components
         vector<T> components;
@@ -73,6 +73,7 @@ class ComponentVector : public IComponentVector {
         inline T& getComponentAt(ID entityID);
 };
 
+// manages component vectors and tosses around pointers like it's nothing
 class ComponentManager {
     private:
         map<const char*, std::shared_ptr<IComponentVector>> componentVectors;
@@ -85,7 +86,6 @@ class ComponentManager {
 // base class for systems, fed vectors of components and then perform operations on them
 class System {
     private:
-        vector<Component> components;
     public:
         virtual void init() {};
         virtual void update(ECSManager* manager) {};
@@ -307,9 +307,9 @@ void ECSManager::registerSystem(){
         // check if render system
         if (is_base_of<RenderSystem,T>::value == 1){
             // create render system
-            RenderSystem system;
+            RenderSystem rsystem;
             // add to vector
-            rsystems.emplace_back(system);
+            rsystems.emplace_back(rsystem);
             // init
 
         }
