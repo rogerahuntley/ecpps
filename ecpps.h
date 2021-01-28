@@ -7,7 +7,6 @@
 #include <iostream>
 #include <typeinfo>
 #include <memory>
-#include <SDL2/SDL.h>
 
 using std::vector;
 using std::map;
@@ -111,8 +110,8 @@ class System {
 class RenderSystem : public System {
     private:
     public:
-        virtual void render(SDL_Renderer* renderer) {};
-        virtual void render(SDL_Renderer* renderer, ECSManager* manager) { render( renderer); };
+        virtual void render() {};
+        virtual void render(ECSManager* manager) { render(); };
 };
 
 // holds much of the top level ECS data and functionality
@@ -155,13 +154,7 @@ class ECSManager {
         // updates all systems
         inline void update();
         // renders all rendersystems
-        inline void render(SDL_Renderer* renderer);
-};
-
-// most often used ECSManager type, usually near the root of the program
-class Scene: public ECSManager {
-    public:
-        Scene() {};
+        inline void render();
 };
 
 // ####### Everything else ####### //
@@ -454,10 +447,10 @@ void ECSManager::update(){
     }
 }
 
-void ECSManager::render(SDL_Renderer* renderer){
+void ECSManager::render(){
     // render all render systems
     for(unique_ptr<RenderSystem>& rsystem : rsystems){
-        rsystem->render(renderer, this);
+        rsystem->render(this);
     }
 }
 
