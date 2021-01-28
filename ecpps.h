@@ -3,15 +3,15 @@
 
 #include <vector>
 #include <map>
+#include <set>
 #include <iostream>
 #include <typeinfo>
-#include <any>
 #include <memory>
 #include <SDL2/SDL.h>
 
 using std::vector;
 using std::map;
-using std::any;
+using std::set;
 using std::type_info;
 using std::is_base_of;
 using std::unique_ptr;
@@ -67,9 +67,12 @@ class ComponentVector : public IComponentVector {
         map<ID, unsigned> indexes;
         // holds vector of components
         vector<T> components;
+        // holds a list of entities
+        set<ID> entities;
+        vector<T>& getComponentVector() { return components; };
     public:
         inline void addComponent(ID entityID, T component);
-        vector<T>& getComponentVector() { return components; };
+        inline set<ID> getComponentEntities();
         inline void removeEntity(ID entityID) override;
         inline T& getComponentAt(ID entityID);
 };
@@ -80,6 +83,7 @@ class ComponentManager {
         map<const char*, std::shared_ptr<IComponentVector>> componentVectors;
     public:
         template <typename T> void addComponent(ID entityID, T component);
+        template <typename T> inline set<ID> getComponentEntities();
         template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
         inline void removeEntity(ID entityID);
 };
@@ -129,8 +133,8 @@ class ECSManager {
         inline void destroyEntity(ID entityID);
         // adds a component of any type to a database of that type
         template <typename T> inline void addComponent(ID entityID, T component);
-        // returns Component Vector pointer for systems
-        template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
+        // gets a set of all relevant entities per component
+        template <typename T> inline set<ID> getComponentEntities();
         // registers a new system
         template <typename T> inline void registerSystem();
         // updates all systems
@@ -181,6 +185,8 @@ void ComponentVector<T>::addComponent(ID entityID, T component) {
     
     // get entity index in internal map
     indexes.insert({entityID, index});
+    // add entity to set
+    entities.emplace(entityID);
     // place component in vector
     components.emplace_back(component);
     
@@ -228,13 +234,20 @@ inline T& ComponentVector<T>::getComponentAt(ID entityID) {
 }
 
 template <typename T>
-void ComponentManager::addComponent(ID entityID, T component){
-    // first, get type_info to check
-    const char* typekey = typeid(T).name();
+set<ID> ComponentVector<T>::getComponentEntities(){
+    return entities;
+}
 
+template <typename T>
+void ComponentManager::addComponent(ID entityID, T component){
     // this is where the pointer-magic happens
     // get pointer for type, then send new component data
     getComponentVector<T>()->addComponent(entityID, component);
+}
+
+template <typename T>
+set<ID> ComponentManager::getComponentEntities(){
+    return getComponentVector<T>()->getComponentEntities();
 }
 
 template <typename T>
@@ -301,9 +314,12 @@ void ECSManager::addComponent(ID entityID, T component){
 }
 
 template <typename T>
-std::shared_ptr<ComponentVector<T>> ECSManager::getComponentVector(){ 
-    // pass return from components
-    return components.getComponentVector<T>();
+set<ID> ECSManager::getComponentEntities(){
+    // check and see if object is derived from Component
+    if(is_base_of<Component,T>::value == 1){
+        // pass to component manager
+        return components.getComponentEntities<T>();
+    }
 }
 
 template <typename T>
