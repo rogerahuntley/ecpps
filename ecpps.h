@@ -14,6 +14,7 @@ using std::map;
 using std::any;
 using std::type_info;
 using std::is_base_of;
+using std::unique_ptr;
 
 // going to try to keep this constrained to one file
 // the goal of this system is to provide an OOP-style interface
@@ -83,28 +84,33 @@ class ComponentManager {
         inline void removeEntity(ID entityID);
 };
 
+// note: for the systems there are two of each function
+// depending on what kind of data you need
 // base class for systems, fed vectors of components and then perform operations on them
 class System {
     private:
     public:
         virtual void init() {};
-        virtual void update(ECSManager* manager) {};
+        virtual void init(ECSManager* manager) { init(); };
+        virtual void update() {};
+        virtual void update(ECSManager* manager) { update(); };
 };
 
 // base class for systems used for rendering
 class RenderSystem : public System {
     private:
     public:
-        virtual void render(ECSManager* manager) {};
+        virtual void render() {};
+        virtual void render(ECSManager* manager) { render(); };
 };
 
 // holds much of the top level ECS data and functionality
 class ECSManager {
     private:
         // holds all systems for looping through updates
-        vector<System> systems;
+        vector<unique_ptr<System>> systems;
         // holds all render systems for looping through renders
-        vector<RenderSystem> rsystems;
+        vector<unique_ptr<RenderSystem>> rsystems;
         // holds all component vectors
         ComponentManager components;
         // holds all Entity class objects (must be kept around until ready to delete)
@@ -304,21 +310,22 @@ template <typename T>
 void ECSManager::registerSystem(){
     // check if system
     if constexpr (is_base_of<System,T>::value == 1){
+        std::cout << typeid(T).name() << std::endl;
+        // create system
+        unique_ptr<T> system = std::make_unique<T>();
+        // next, add to vector
         // check if render system
         if constexpr (is_base_of<RenderSystem,T>::value == 1){
-            // create render system
-            T rsystem;
-            // add to vector
-            rsystems.emplace_back(rsystem);
+            // if so, add to render systems
+            rsystems.emplace_back(std::move(system));
             // init
-
+            rsystems.back()->init(this);
+        } else {
+            // otherwise, add to systems
+            systems.emplace_back(std::move(system));
+            // init
+            systems.back()->init(this);
         }
-        // create system
-        T system;
-        // add to vector
-        systems.emplace_back(system);
-        // init
-        system.init();
     }
 }
 
@@ -344,8 +351,8 @@ ID ECSManager::generateEntityID(){
 
 void ECSManager::update(){
     // update all systems
-    for(System& system : systems){
-        system.update(this);
+    for(unique_ptr<System>& system : systems){
+        system->update(this);
     }
 
     // after much internal debate, i decided that render systems should get their own update
@@ -356,15 +363,15 @@ void ECSManager::update(){
     // if I find that they don't and can be seperated easily, then i'll remove this
 
     // update all render systems
-    for(RenderSystem& rsystem : rsystems){
-        rsystem.update(this);
+    for(unique_ptr<RenderSystem>& rsystem : rsystems){
+        rsystem->update(this);
     }
 }
 
 void ECSManager::render(){
     // render all render systems
-    for(RenderSystem& rsystem : rsystems){
-        rsystem.render(this);
+    for(unique_ptr<RenderSystem>& rsystem : rsystems){
+        rsystem->render(this);
     }
 }
 
