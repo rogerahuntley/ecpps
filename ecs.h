@@ -19,7 +19,7 @@ using std::is_base_of;
 // the goal of this system is to provide an OOP-style interface
 // while maintaining DDP-style performance undernearth
 
-namespace ecs {
+namespace ecpps {
 typedef unsigned ID;
 class ECSManager;
 class ComponentManager;
