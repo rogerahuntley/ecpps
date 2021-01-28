@@ -69,10 +69,15 @@ class ComponentVector : public IComponentVector {
         vector<T> components;
         // holds a list of entities
         set<ID> entities;
+        // holds a seperate list of entities to init
+        set<ID> newEntities;
+        // private function for getting pointer
         vector<T>& getComponentVector() { return components; };
     public:
         inline void addComponent(ID entityID, T component);
         inline set<ID>& getComponentEntities();
+        inline set<ID>& getNewComponentEntities();
+        inline void groupEntities();
         inline void removeEntity(ID entityID) override;
         inline T& getComponent(ID entityID);
 };
@@ -84,6 +89,8 @@ class ComponentManager {
     public:
         template <typename T> void addComponent(ID entityID, T component);
         template <typename T> inline set<ID>& getComponentEntities();
+        template <typename T> inline set<ID>& getNewComponentEntities();
+        template <typename T> inline void groupEntities();
         template <typename T> inline T& getComponent(ID entityID);
         template <typename T> std::shared_ptr<ComponentVector<T>> getComponentVector();
         inline void removeEntity(ID entityID);
@@ -136,10 +143,14 @@ class ECSManager {
         template <typename T> inline void addComponent(ID entityID, T component);
         // gets a set of all relevant entities per component
         template <typename T> inline set<ID>& getComponentEntities();
+        // gets a set of all entity/components ready to init
+        template <typename T> inline set<ID>& getNewComponentEntities();
         // gets a component of type and entity
         template <typename T> inline T& getComponent(ID entityID);
         // registers a new system
         template <typename T> inline void registerSystem();
+        // inits all systems
+        inline void init();
         // updates all systems
         inline void update();
         // renders all rendersystems
@@ -153,6 +164,12 @@ class Scene: public ECSManager {
 };
 
 // ####### Everything else ####### //
+
+
+
+
+
+
 
 // ------- Entity ------- //
 
@@ -188,8 +205,8 @@ void ComponentVector<T>::addComponent(ID entityID, T component) {
     
     // get entity index in internal map
     indexes.insert({entityID, index});
-    // add entity to set
-    entities.emplace(entityID);
+    // add entity to init set
+    newEntities.emplace(entityID);
     // place component in vector
     components.emplace_back(component);
     
@@ -242,6 +259,19 @@ set<ID>& ComponentVector<T>::getComponentEntities(){
 }
 
 template <typename T>
+set<ID>& ComponentVector<T>::getNewComponentEntities(){
+    return newEntities;
+}
+
+template <typename T>
+void ComponentVector<T>::groupEntities(){
+    // push init group into regular group
+    entities.insert(newEntities.begin(), newEntities.end());
+    // clear init group
+    newEntities.clear();
+}
+
+template <typename T>
 std::shared_ptr<ComponentVector<T>> ComponentManager::getComponentVector(){
     // first, get type_info to check
     const char* typekey = typeid(T).name();
@@ -264,13 +294,23 @@ void ComponentManager::addComponent(ID entityID, T component){
 }
 
 template <typename T>
+inline T& ComponentManager::getComponent(ID entityID) {
+    return getComponentVector<T>()->getComponent(entityID);
+}
+
+template <typename T>
 set<ID>& ComponentManager::getComponentEntities(){
     return getComponentVector<T>()->getComponentEntities();
 }
 
 template <typename T>
-inline T& ComponentManager::getComponent(ID entityID) {
-    return getComponentVector<T>()->getComponent(entityID);
+set<ID>& ComponentManager::getNewComponentEntities(){
+    return getComponentVector<T>()->getNewComponentEntities();
+}
+
+template <typename T>
+void ComponentManager::groupEntities(){
+    return getComponentVector<T>()->groupEntities();
 }
 
 void ComponentManager::removeEntity(ID entityID){
@@ -332,6 +372,11 @@ set<ID>& ECSManager::getComponentEntities(){
 }
 
 template <typename T>
+set<ID>& ECSManager::getNewComponentEntities(){
+    return components.getNewComponentEntities<T>();
+}
+
+template <typename T>
 inline T& ECSManager::getComponent(ID entityID) {
     return components.getComponent<T>(entityID);
 }
@@ -379,19 +424,22 @@ ID ECSManager::generateEntityID(){
     return toReturn;
 }
 
+void ECSManager::init(){
+    // update all systems
+    for(unique_ptr<System>& system : systems){
+        system->init(this);
+    }
+    // update all render systems
+    for(unique_ptr<RenderSystem>& rsystem : rsystems){
+        rsystem->init(this);
+    }
+}
+
 void ECSManager::update(){
     // update all systems
     for(unique_ptr<System>& system : systems){
         system->update(this);
     }
-
-    // after much internal debate, i decided that render systems should get their own update
-    // ideally, render and update code are kept in seperate systems
-    // but if a render system **must** update, shouldn't it be seperated at least from the render function?
-    // although, loading every rendersystem into memory twice each gameloop might not be worth
-    // it really depends on wether or not rendersystems ever need updating, which needs further testing
-    // if I find that they don't and can be seperated easily, then i'll remove this
-
     // update all render systems
     for(unique_ptr<RenderSystem>& rsystem : rsystems){
         rsystem->update(this);
