@@ -38,6 +38,8 @@ class Entity {
         Entity(ID entityID, ECSManager* manager) : entityID(entityID),manager(*manager){};
         // adds component to manager with entity id
         template <typename T> inline void addComponent(T component);
+        // return's entity id
+        inline ID getID();
         // used to destroy object for all component managers and delete self from manager
         inline void destroy();
 };
@@ -117,6 +119,8 @@ class RenderSystem : public System {
 // holds much of the top level ECS data and functionality
 class ECSManager {
     private:
+        // holds the id for this manager
+        ID managerID;
         // holds all systems for looping through updates
         vector<unique_ptr<System>> systems;
         // holds all render systems for looping through renders
@@ -132,13 +136,15 @@ class ECSManager {
         // creates a unique ID for each enitity
         inline ID generateEntityID();
     public:
-        ECSManager() {};
+        inline ECSManager();
         // creates a default entity
         inline Entity& createEntity();
         // destroys an entity
         inline void destroyEntity(ID entityID);
         // adds a component of any type to a database of that type
         template <typename T> inline void addComponent(ID entityID, T component);
+        // adds a component of any type to a database of that type (entity is ECSmanager)
+        template <typename T> inline void addComponent(T component);
         // gets a set of all relevant entities per component
         template <typename T> inline set<ID>& getComponentEntities();
         // gets a set of all entity/components ready to init
@@ -147,6 +153,8 @@ class ECSManager {
         template <typename T> inline void groupEntities();
         // gets a component of type and entity
         template <typename T> inline T& getComponent(ID entityID);
+        // adds a component of any type to a database of that type (entity is ECSmanager itself)
+        template <typename T> inline T& getComponent();
         // registers a new system
         template <typename T> inline void registerSystem();
         // inits all systems
@@ -174,6 +182,11 @@ void Entity::addComponent(T component){
         // send component to manager
         manager.addComponent<T>(entityID, component);
     }
+}
+
+ID Entity::getID(){
+    // return id
+    return entityID;
 }
 
 void Entity::destroy(){
@@ -317,6 +330,13 @@ void ComponentManager::removeEntity(ID entityID){
 
 // ------- ECSManager ------- //
 
+ECSManager::ECSManager(){
+    // add entity id for self
+    Entity& thisEntity = createEntity();
+    // set self id to entity id
+    managerID = thisEntity.getID();
+}
+
 // constructor for entity, technically
 Entity& ECSManager::createEntity(){
     // get unique ID
@@ -357,6 +377,11 @@ void ECSManager::addComponent(ID entityID, T component){
 }
 
 template <typename T>
+void ECSManager::addComponent(T component){ 
+    addComponent<T>(managerID, component);
+}
+
+template <typename T>
 set<ID>& ECSManager::getComponentEntities(){
     // check and see if object is derived from Component
     if(is_base_of<Component,T>::value == 1){
@@ -375,11 +400,14 @@ void ECSManager::groupEntities(){
     return components.groupEntities<T>();
 }
 
-
-
 template <typename T>
 inline T& ECSManager::getComponent(ID entityID) {
     return components.getComponent<T>(entityID);
+}
+
+template <typename T>
+inline T& ECSManager::getComponent() {
+    return getComponent<T>(managerID);
 }
 
 template <typename T>
