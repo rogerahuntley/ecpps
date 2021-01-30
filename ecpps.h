@@ -158,11 +158,11 @@ class ECSManager {
         // registers a new system
         template <typename T> inline void registerSystem();
         // inits all systems
-        inline void init();
+        inline virtual void init();
         // updates all systems
-        inline void update();
+        inline virtual void update();
         // renders all rendersystems
-        inline void render();
+        inline virtual void render();
 };
 
 // ####### Everything else ####### //
