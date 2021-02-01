@@ -29,7 +29,7 @@ class ComponentManager;
 
 // wrapper class, entity is really just an ID but this gives OOP approach to management. serves as a reference point for components
 class Entity {
-    private:
+    protected:
         // reference to manager for when adding component
         ECSManager& manager;
         // unique ID for every entity
