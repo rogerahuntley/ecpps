@@ -35,7 +35,9 @@ class Entity {
         ID entityID;
     public:
         // constructor
-        Entity(ID entityID, ECSManager* manager) : entityID(entityID),manager(*manager){};
+        Entity(ID entityID, ECSManager* manager) : entityID(entityID),manager(*manager){ init(); };
+        // meant to be override to allow subclasses to easily add components to self
+        virtual void init(){};
         // adds component to manager with entity id
         template <typename T> inline void addComponent(T component);
         // return's entity id
@@ -139,11 +141,13 @@ class ECSManager {
         inline ECSManager();
         // creates a default entity
         inline Entity& createEntity();
+        // creates an entity of T subclass
+        template <typename T> inline Entity& createEntity();
         // destroys an entity
         inline void destroyEntity(ID entityID);
-        // adds a component of any type to a database of that type
+        // adds a component of any type to a database of T (subclass of component)
         template <typename T> inline void addComponent(ID entityID, T component);
-        // adds a component of any type to a database of that type (entity is ECSmanager)
+        // adds a component of any type to a database of T (subclass of component) and entityID of ECSmanager
         template <typename T> inline void addComponent(T component);
         // gets a set of all relevant entities per component
         template <typename T> inline set<ID>& getComponentEntities();
@@ -153,7 +157,7 @@ class ECSManager {
         template <typename T> inline void groupEntities();
         // gets a component of type and entity
         template <typename T> inline T& getComponent(ID entityID);
-        // adds a component of any type to a database of that type (entity is ECSmanager itself)
+        // gets a component of any type and entityID of ECSmanager itself
         template <typename T> inline T& getComponent();
         // registers a new system
         template <typename T> inline void registerSystem();
@@ -337,19 +341,28 @@ ECSManager::ECSManager(){
     managerID = thisEntity.getID();
 }
 
+template <typename T>
+Entity& ECSManager::createEntity(){
+    // check and see if T is derived from Entity
+    if(is_base_of<Entity,T>::value == 1){
+        // get unique ID
+        ID newID = generateEntityID();
+        // create entity with id and reference to manager
+        T entity(newID, this);
+
+        std::cout << " -------- creating entity at id: " << newID << std::endl;
+
+        // add entity to vector
+        entities.insert({newID, entity});
+        // return reference to entity
+        return entities.at(newID);
+    }
+}
+
 // constructor for entity, technically
 Entity& ECSManager::createEntity(){
-    // get unique ID
-    ID newID = generateEntityID();
-    // create entity with id and reference to manager
-    Entity newEntity(newID, this);
-
-    std::cout << " -------- creating entity at id: " << newID << std::endl;
-
-    // add entity to vector
-    entities.insert({newID, newEntity});
-    // return reference to entity
-    return entities.at(newID);
+    // create generic entity
+    return createEntity<Entity>();
 }
 
 // destroys an entity
