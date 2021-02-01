@@ -7,6 +7,7 @@
 #include <iostream>
 #include <typeinfo>
 #include <memory>
+#include <cstdarg>
 
 using std::vector;
 using std::map;
@@ -142,7 +143,7 @@ class ECSManager {
         // creates a default entity
         inline Entity& createEntity();
         // creates an entity of T subclass
-        template <typename T> inline Entity& createEntity();
+        template <typename T, typename... Args> inline Entity& createEntity(Args... args);
         // destroys an entity
         inline void destroyEntity(ID entityID);
         // adds a component of any type to a database of T (subclass of component)
@@ -341,14 +342,14 @@ ECSManager::ECSManager(){
     managerID = thisEntity.getID();
 }
 
-template <typename T>
-Entity& ECSManager::createEntity(){
+template <typename T, typename... Args>
+Entity& ECSManager::createEntity(Args... args){
     // check and see if T is derived from Entity
     if(is_base_of<Entity,T>::value == 1){
         // get unique ID
         ID newID = generateEntityID();
         // create entity with id and reference to manager
-        T entity(newID, this);
+        T entity(newID, this, args...);
 
         std::cout << " -------- creating entity at id: " << newID << std::endl;
 
