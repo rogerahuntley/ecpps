@@ -2,6 +2,7 @@
 #define ECS_H
 
 #include <vector>
+#include <string>
 #include <map>
 #include <set>
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <cstdarg>
 
 using std::vector;
+using std::string;
 using std::map;
 using std::set;
 using std::type_info;
@@ -132,6 +134,8 @@ class ECSManager {
         ComponentManager components;
         // holds all Entity class objects (must be kept around until ready to delete)
         map<ID, Entity> entities;
+        // holds special entities, obtainable by name
+        map<string, ID&> specialEntities;
         // holds current value to generate new entityIDs
         ID nextID = 0;
         // holds all IDs that once belonged to entities that have been deleted (reusable)
@@ -139,13 +143,17 @@ class ECSManager {
         // creates a unique ID for each enitity
         inline ID generateEntityID();
     public:
-        inline ECSManager();
+        inline ECSManager(); 
         // creates a default entity
         inline Entity& createEntity();
         // creates an entity of T subclass
         template <typename T, typename... Args> inline Entity& createEntity(Args... args);
         // destroys an entity
         inline void destroyEntity(ID entityID);
+        // used to save unique entity in map
+        inline void setSpecialEntity(string entityName, Entity& entity);
+        // used to retreive unique entity
+        inline ID& getSpecialEntity(string entityName);
         // adds a component of any type to a database of T (subclass of component)
         template <typename T> inline void addComponent(ID entityID, T component);
         // adds a component of any type to a database of T (subclass of component) and entityID of ECSmanager
@@ -379,6 +387,26 @@ void ECSManager::destroyEntity(ID entityID) {
     entities.erase(entityID);
     // add entity id to reclaimable id list
     reusableIDs.emplace_back(entityID);
+}
+
+inline void ECSManager::setSpecialEntity(string entityName, Entity& entity){
+    // insert hehe (thought it was more complicated)
+    ID entityID = entity.getID();
+
+    specialEntities.insert({entityName, entityID});
+
+}
+
+inline ID& ECSManager::getSpecialEntity(string entityName){
+    // find value and return
+    // if in map
+    if(specialEntities.find(entityName) != specialEntities.end()){
+        // return entity
+        return specialEntities.at(entityName);
+        // else
+    } else {
+        throw "error: no special entity";
+    }
 }
 
 template <typename T>
